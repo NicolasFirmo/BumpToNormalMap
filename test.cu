@@ -3,8 +3,8 @@
 #include <device_functions.h>
 #include <cstdio>
 
-static unsigned char* d_in;
-static unsigned char* d_out;
+static float* d_in;
+static float* d_out;
 
 static unsigned int h_Width;
 static unsigned int h_Height;
@@ -22,7 +22,7 @@ static unsigned int h_BlockHeight;
 
 #define OFFSET(x,y) sIdx + y * THREAD_TOTAL_X_LEN + x
 
-__global__ void Sobel(const unsigned char* in,unsigned char* out, const unsigned int width, const unsigned int height)
+__global__ void Sobel(const float* in,float* out, const unsigned int width, const unsigned int height)
 {
 	extern __shared__ float s[];
 
@@ -52,16 +52,16 @@ __global__ void Sobel(const unsigned char* in,unsigned char* out, const unsigned
 													-1 * s[OFFSET(-1, 1)] -2 * s[OFFSET(0, 1)] -1 * s[OFFSET(1, 1)]
 												) * 0.25f;
 
-		const float gradientLen = sqrt(sobelX*sobelX + sobelY*sobelY + 255.0f * 255.0f);
+		const float gradientLen = sqrt(sobelX*sobelX + sobelY*sobelY + 1.0f);
 
-		const unsigned char xLen = (-sobelX/gradientLen) * 128.0f + 128.0f;
-		const unsigned char yLen = (-sobelY/gradientLen) * 128.0f + 128.0f;
-		const unsigned char zLen = (255.0f * 255.0f)/gradientLen;
+		const float xLen = (-sobelX/gradientLen) * 0.5f + 0.5f;
+		const float yLen = (-sobelY/gradientLen) * 0.5f + 0.5f;
+		const float zLen = 1.0f/gradientLen;
 
 		out[inPos * 4 + 0] = xLen;
 		out[inPos * 4 + 1] = yLen;
 		out[inPos * 4 + 2] = zLen;
-		out[inPos * 4 + 3] = 255;
+		out[inPos * 4 + 3] = 1.0f;
 	}
 }
 
@@ -73,13 +73,13 @@ void InitBumpToNormalMap(const unsigned int width, const unsigned int height)
 	h_BlockWidth = (h_Width / THREAD_WORKING_X_LEN);
 	h_BlockHeight = (h_Height / THREAD_WORKING_Y_LEN);
 
-	cudaMalloc(&d_in, h_Width * h_Height * 1 * sizeof(unsigned char));
-	cudaMalloc(&d_out, h_Width * h_Height * 4 * sizeof(unsigned char));
+	cudaMalloc(&d_in, h_Width * h_Height * 1 * sizeof(float));
+	cudaMalloc(&d_out, h_Width * h_Height * 4 * sizeof(float));
 }
 
-int KernelBumpToNormalMap(unsigned char* h_in_img,unsigned char* h_out_img)
+int KernelBumpToNormalMap(float* h_in_img,float* h_out_img)
 {
-	cudaError_t error = cudaMemcpy(d_in, h_in_img, h_Width * h_Height * 1 * sizeof(unsigned char), cudaMemcpyHostToDevice);
+	cudaError_t error = cudaMemcpy(d_in, h_in_img, h_Width * h_Height * 1 * sizeof(float), cudaMemcpyHostToDevice);
 	if (error != cudaSuccess)
 		return error;
 
@@ -88,7 +88,7 @@ int KernelBumpToNormalMap(unsigned char* h_in_img,unsigned char* h_out_img)
 	if (error != cudaSuccess)
 		return error;
 
-	error = cudaMemcpy(h_out_img, d_out, h_Width * h_Height * 4 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+	error = cudaMemcpy(h_out_img, d_out, h_Width * h_Height * 4 * sizeof(float), cudaMemcpyDeviceToHost);
 	if (error != cudaSuccess)
 		return error;
 
