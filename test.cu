@@ -24,7 +24,7 @@ static unsigned int h_BlockHeight;
 
 __global__ void Sobel(const unsigned char* in,unsigned char* out, const unsigned int width, const unsigned int height)
 {
-	extern __shared__ short s[];
+	extern __shared__ float s[];
 
 	const unsigned int xPos = (blockIdx.x * THREAD_WORKING_X_LEN + threadIdx.x) - (THREAD_AUX_X_LEN / 2);
 	const unsigned int yPos = (blockIdx.y * THREAD_WORKING_Y_LEN + threadIdx.y) - (THREAD_AUX_Y_LEN / 2);
@@ -44,19 +44,19 @@ __global__ void Sobel(const unsigned char* in,unsigned char* out, const unsigned
 													-1 * s[OFFSET(-1,-1)] +0 * s[OFFSET(0,-1)] +1 * s[OFFSET(1,-1)]
 													-2 * s[OFFSET(-1, 0)] +0 * s[OFFSET(0, 0)] +2 * s[OFFSET(1, 0)]
 													-1 * s[OFFSET(-1, 1)] +0 * s[OFFSET(0, 1)] +1 * s[OFFSET(1, 1)]
-												)/(0.08f * 255.0f);
+												) * 0.25f;
 
 		const float sobelY =	(
 													+1 * s[OFFSET(-1,-1)] +2 * s[OFFSET(0,-1)] +1 * s[OFFSET(1,-1)]
 													+0 * s[OFFSET(-1, 0)] +0 * s[OFFSET(0, 0)] +0 * s[OFFSET(1, 0)]
 													-1 * s[OFFSET(-1, 1)] -2 * s[OFFSET(0, 1)] -1 * s[OFFSET(1, 1)]
-												)/(0.08f * 255.0f);
+												) * 0.25f;
 
-		const float gradientLen = sqrt(sobelX*sobelX + sobelY*sobelY + 1.0f);
+		const float gradientLen = sqrt(sobelX*sobelX + sobelY*sobelY + 255.0f * 255.0f);
 
 		const unsigned char xLen = (-sobelX/gradientLen) * 128.0f + 128.0f;
 		const unsigned char yLen = (-sobelY/gradientLen) * 128.0f + 128.0f;
-		const unsigned char zLen = 255.0f/gradientLen;
+		const unsigned char zLen = (255.0f * 255.0f)/gradientLen;
 
 		out[inPos * 4 + 0] = xLen;
 		out[inPos * 4 + 1] = yLen;
@@ -83,7 +83,7 @@ int KernelBumpToNormalMap(unsigned char* h_in_img,unsigned char* h_out_img)
 	if (error != cudaSuccess)
 		return error;
 
-	Sobel<<<dim3(h_BlockWidth, h_BlockHeight, 1), dim3(THREAD_TOTAL_X_LEN, THREAD_TOTAL_Y_LEN, 1), THREAD_TOTAL_X_LEN * THREAD_TOTAL_Y_LEN * sizeof(short)>>>(d_in, d_out, h_Width, h_Height);
+	Sobel<<<dim3(h_BlockWidth, h_BlockHeight, 1), dim3(THREAD_TOTAL_X_LEN, THREAD_TOTAL_Y_LEN, 1), THREAD_TOTAL_X_LEN * THREAD_TOTAL_Y_LEN * sizeof(float)>>>(d_in, d_out, h_Width, h_Height);
 	error = cudaGetLastError();
 	if (error != cudaSuccess)
 		return error;
