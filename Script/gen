@@ -1,0 +1,4 @@
+cd ../ReleaseBuild
+make -j4
+cd ../DebugBuild
+make -j4

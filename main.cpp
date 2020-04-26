@@ -76,6 +76,7 @@ int main(int argc, char **)
 	}
 	t2.join();
 	stbi_write_png("./res/CPUres.png", imageWidth, imageHeight, 4, cpuOut, imageWidth * 4);
+	std::cout << '\n';
 
 	{
 		nic::ScopeTimerOStream<> t("GPU Shutdown", std::cout);
@@ -88,10 +89,9 @@ int main(int argc, char **)
 		delete[] cpuIn;
 		delete[] cpuOut;
 	}
+	std::cout << "\nProfile finished\n";
 
 	stbi_image_free(imgPtr);
-
-	std::cin.ignore();
 }
 
 #define OFFSET(di,dj) (i + di) + (j + dj) * imageWidth
